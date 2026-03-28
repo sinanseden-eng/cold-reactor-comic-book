@@ -2,135 +2,395 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cold Reactor Art Generator</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Everything Everything: Cold Reactor - Comic</title>
+    
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Chakra+Petch:ital,wght@0,400;0,700;1,700&display=swap" rel="stylesheet">
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
     <style>
         .font-tech { font-family: 'Chakra Petch', sans-serif; }
         .font-mono-glitch { font-family: 'Share Tech Mono', monospace; }
-        .glitch-text { text-shadow: 2px 0 #0ff, -2px 0 #f0f; }
+        
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .smooth-scroll { scroll-behavior: smooth; }
+        
+        .comic-panel {
+            box-shadow: 0 0 15px rgba(234, 255, 0, 0.3);
+            border: 2px solid #eaff00; /* Neon yellow border */
+        }
+        @media (min-width: 640px) {
+            .comic-panel {
+                box-shadow: 0 0 30px rgba(234, 255, 0, 0.4);
+                border: 4px solid #eaff00;
+            }
+        }
+        
+        .glitch-text {
+            text-shadow: 2px 0 #0ff, -2px 0 #f0f;
+        }
     </style>
 </head>
-<body class="bg-[#050505] text-white flex flex-col items-center justify-center min-h-screen p-4 font-tech selection:bg-yellow-400 selection:text-black">
-    <div id="app" class="w-full max-w-md flex flex-col items-center gap-6">
-        
-        <div class="text-center w-full border-b border-yellow-400/30 pb-4">
-            <h1 class="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-600 tracking-tighter glitch-text uppercase">SYS.IMG_GEN</h1>
-            <p class="text-xs text-yellow-400/70 font-mono-glitch mt-1 uppercase tracking-widest">Generating 20.jpg (Corrupted AI Deity)</p>
-        </div>
+<body class="bg-black text-white selection:bg-yellow-400 selection:text-black">
+    <div id="root"></div>
 
-        <!-- Image Container -->
-        <div id="image-container" class="w-full aspect-[16/9] bg-black border-2 border-yellow-400 rounded flex flex-col items-center justify-center overflow-hidden relative shadow-[0_0_20px_rgba(234,255,0,0.2)] transition-all">
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useCallback } = React;
+
+        // --- ICONS ---
+        const Icon = ({ children, className, ...props }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>{children}</svg>
+        );
+        const ChevronLeft = (props) => <Icon {...props}><path d="m15 18-6-6 6-6"/></Icon>;
+        const ChevronRight = (props) => <Icon {...props}><path d="m9 18 6-6-6-6"/></Icon>;
+        const Play = (props) => <Icon {...props}><polygon points="5 3 19 12 5 21 5 3"/></Icon>;
+        const Pause = (props) => <Icon {...props}><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></Icon>;
+        const Zap = (props) => <Icon {...props}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></Icon>;
+        const Loader2 = (props) => <Icon {...props}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></Icon>;
+        const AlertCircle = (props) => <Icon {...props}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></Icon>;
+        const Terminal = (props) => <Icon {...props}><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></Icon>;
+
+        // --- DATA ---
+        // Setup for a future GitHub repo, replace REPO_BASE_URL with your own when ready!
+        const REPO_BASE_URL = "https://raw.githubusercontent.com/sinanseden-eng/cold-reactor-comic-book/main/";
+        const CACHE_BUSTER = "?v=2"; 
+
+        const pages = [
+            { id: 1, type: "intro", text: "COLD REACTOR", subtext: "EVERYTHING EVERYTHING", image: `${REPO_BASE_URL}1.jpg${CACHE_BUSTER}`, bgColor: "bg-zinc-950", timestamp: 0 },
+            { id: 2, lyrics: "So we built the mountain by digging out a mighty hole\nAnd ours, we carried every rock and stone", image: `${REPO_BASE_URL}2.jpg${CACHE_BUSTER}`, bgColor: "bg-slate-900", timestamp: 4 },
+            { id: 3, lyrics: "But now the hole is deeper than anybody ever planned\nAnd we're blocking out the sun\nI believe in life, you believe in killing time\nBy the fingertips", image: `${REPO_BASE_URL}3.jpg${CACHE_BUSTER}`, bgColor: "bg-blue-950", timestamp: 16 },
+            { id: 4, lyrics: "I'm hinging on, 'Sorry, Satan'\nBut I gotta do this evil on my own", image: `${REPO_BASE_URL}4.jpg${CACHE_BUSTER}`, bgColor: "bg-red-950", timestamp: 30 },
+            { id: 5, lyrics: "I haven't left the house in nearly 30,000 days\nI sent you the image of a little yellow face\nTo tell you that I'm sad about the emptiness that's all around me", image: `${REPO_BASE_URL}5.jpg${CACHE_BUSTER}`, bgColor: "bg-yellow-950", timestamp: 41 },
+            { id: 6, lyrics: "And I can't stop the ringing in your ears\nWhen everything we love becomes a picture of a simulation", image: `${REPO_BASE_URL}6.jpg${CACHE_BUSTER}`, bgColor: "bg-purple-950", timestamp: 53 },
+            { id: 7, lyrics: "It wakes me in the middle of the night\nI love you like an atom bomb\nBut I become a cold reactor", image: `${REPO_BASE_URL}7.jpg${CACHE_BUSTER}`, bgColor: "bg-cyan-950", timestamp: 60, slowScroll: true },
+            { id: 8, lyrics: "So Dr. Supermarket, some of us stayed in the pit\nBecause it felt so comfortable to dwell below", image: `${REPO_BASE_URL}8.jpg${CACHE_BUSTER}`, bgColor: "bg-emerald-950", timestamp: 66 },
+            { id: 9, lyrics: "We made the mountain bigger, though I have forgotten why\nIt's a dream I'm in with you", image: `${REPO_BASE_URL}9.jpg${CACHE_BUSTER}`, bgColor: "bg-indigo-950", timestamp: 79 },
+            { id: 10, lyrics: "Feel the night, the star is hung far above the head of man\nYou see the steel, it's glittering", image: `${REPO_BASE_URL}10.jpg${CACHE_BUSTER}`, bgColor: "bg-slate-900", timestamp: 90 },
+            { id: 11, lyrics: "Sorry, Satan\nBut I gotta do this evil on my own", image: `${REPO_BASE_URL}11.jpg${CACHE_BUSTER}`, bgColor: "bg-red-950", timestamp: 100 },
+            { id: 12, lyrics: "I haven't left the house in nearly 30,000 days\nI sent you the image of a little yellow face\nTo tell you that I'm sad about the emptiness that's all around me", image: `${REPO_BASE_URL}12.jpg${CACHE_BUSTER}`, bgColor: "bg-yellow-950", timestamp: 108 },
+            { id: 13, lyrics: "And I can't stop the ringing in your ears\nWhen everything we love becomes a picture of a simulation", image: `${REPO_BASE_URL}13.jpg${CACHE_BUSTER}`, bgColor: "bg-fuchsia-950", timestamp: 114 },
+            { id: 14, lyrics: "It wakes me in the middle of the night\nI love you like an atom bomb\nBut I become a cold reactor", image: `${REPO_BASE_URL}14.jpg${CACHE_BUSTER}`, bgColor: "bg-cyan-950", timestamp: 120, slowScroll: true },
+            { id: 15, lyrics: "And maybe I go missing in the rain\nIf God is in the mountain, He won't answer me a single question", image: `${REPO_BASE_URL}15.jpg${CACHE_BUSTER}`, bgColor: "bg-blue-950", timestamp: 125 },
+            { id: 16, lyrics: "Like why does everybody feel the same?\nThe slow degeneration, I'm crying out for mercy", image: `${REPO_BASE_URL}16.jpg${CACHE_BUSTER}`, bgColor: "bg-gray-900", timestamp: 131 },
+            { id: 17, lyrics: "Just look into my dead electric eyes\nI see a blue reflection of the world inside a poor dimension", image: `${REPO_BASE_URL}17.jpg${CACHE_BUSTER}`, bgColor: "bg-blue-900", timestamp: 138 },
+            { id: 18, lyrics: "It wakes me in the middle of the night\nI love you like an atom bomb\nBut I become a cold reactor", image: `${REPO_BASE_URL}18.jpg${CACHE_BUSTER}`, bgColor: "bg-cyan-950", timestamp: 144, slowScroll: true },
+            { id: 19, lyrics: "Now you're gonna see what's underneath", image: `${REPO_BASE_URL}19.jpg${CACHE_BUSTER}`, bgColor: "bg-zinc-950", timestamp: 157, superSlowScroll: true },
+            { id: 20, lyrics: "Sorry, Satan\nSorry, Satan", image: `${REPO_BASE_URL}20.jpg${CACHE_BUSTER}`, bgColor: "bg-red-950", timestamp: 172 },
+            { id: 21, lyrics: "And I can't stop the ringing in your ears\nWhen everything we love becomes a picture of a simulation", image: `${REPO_BASE_URL}21.jpg${CACHE_BUSTER}`, bgColor: "bg-fuchsia-950", timestamp: 179 },
+            { id: 22, lyrics: "It wakes me in the middle of the night\nI love you like an atom bomb\nBut I become a cold reactor", image: `${REPO_BASE_URL}22.jpg${CACHE_BUSTER}`, bgColor: "bg-black", timestamp: 185, slowScroll: true }
+        ];
+
+        const ComicReader = () => {
+            const [currentPage, setCurrentPage] = useState(0);
+            const [isPlaying, setIsPlaying] = useState(false);
+            const [isPlayerReady, setIsPlayerReady] = useState(false);
+            const [audioStatus, setAudioStatus] = useState('loading');
+            const [autoFlip, setAutoFlip] = useState(true);
+            const [currentTime, setCurrentTime] = useState(0);
+            const [duration, setDuration] = useState(232); // 3:52
             
-            <!-- Loading State -->
-            <div id="loader" class="flex flex-col items-center gap-4 p-6 text-center">
-                <svg class="animate-spin h-10 w-10 text-yellow-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <span class="text-sm font-bold text-yellow-400 uppercase tracking-widest font-mono-glitch animate-pulse">Processing...</span>
-                <p class="text-xs text-blue-400 font-mono-glitch">Rendering digital deity...</p>
-            </div>
-
-            <!-- Result Image -->
-            <img id="result-img" class="hidden w-full h-full object-cover" alt="Generated Comic Panel">
+            const [useMp3Fallback, setUseMp3Fallback] = useState(false);
+            const [isSilentMode, setIsSilentMode] = useState(false);
             
-            <!-- Scanline Overlay -->
-            <div class="absolute inset-0 pointer-events-none z-20 opacity-20 mix-blend-overlay" style="background-image: linear-gradient(transparent 50%, rgba(0,0,0,0.8) 50%); background-size: 100% 4px;"></div>
-        </div>
+            const playerRef = useRef(null);
+            const audioRef = useRef(null);
+            const requestRef = useRef(null);
+            const bufferingTimeoutRef = useRef(null); 
+            const lastTimeRef = useRef(performance.now());
+            const totalPages = pages.length;
+            const videoId = "3_lQFwTs_g4"; 
+            
+            const fallbackAudioUrl = `${REPO_BASE_URL}cold_reactor.mp3${CACHE_BUSTER}`;
 
-        <!-- Error Message -->
-        <div id="error-msg" class="hidden text-red-400 text-sm text-center font-mono-glitch bg-red-950/50 border border-red-900 p-4 rounded w-full"></div>
-
-        <!-- Download Button -->
-        <button id="download-btn" class="hidden w-full bg-yellow-400 hover:bg-yellow-300 text-black font-bold py-4 px-4 rounded transition-all uppercase tracking-widest text-sm border-2 border-transparent shadow-[0_0_15px_rgba(234,255,0,0.4)] flex items-center justify-center gap-2 font-mono-glitch">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            DOWNLOAD_20.JPG
-        </button>
-    </div>
-
-    <script>
-        const apiKey = ""; // API Key provided by execution environment
-        
-        // PROMPT: A glitching, corrupted AI face in neon red and yellow.
-        const promptText = "Cyberpunk digital noir graphic novel art style. A distorted, corrupted visual of a massive, terrifying AI face or digital deity floating in a pitch-black void. The face is glitching wildly with aggressive neon-red and neon-yellow digital artifacts, code blocks, and static. Dystopian artificial intelligence, technological horror. Cinematic, extreme high contrast, clean sharp vector-like lines mixed with heavy digital glitch artifacts. No text, no speech bubbles.";
-
-        const delay = ms => new Promise(res => setTimeout(res, ms));
-
-        async function fetchWithRetry(url, options, retries = 5) {
-            let backoff = 1000;
-            for (let i = 0; i < retries; i++) {
-                try {
-                    const response = await fetch(url, options);
-                    if (!response.ok) {
-                        throw new Error(`API Error: Status ${response.status}`);
+            // --- YOUTUBE API SETUP ---
+            useEffect(() => {
+                const initializePlayer = () => {
+                    if (!document.getElementById('youtube-player')) {
+                        setTimeout(initializePlayer, 100);
+                        return;
                     }
-                    return await response.json();
-                } catch (err) {
-                    if (i === retries - 1) throw err;
-                    await delay(backoff);
-                    backoff *= 2; // Exponential backoff
-                }
-            }
-        }
+                    
+                    if (playerRef.current && typeof playerRef.current.destroy === 'function') {
+                        playerRef.current.destroy();
+                    }
 
-        async function generateImage() {
-            const loader = document.getElementById('loader');
-            const resultImg = document.getElementById('result-img');
-            const errorMsg = document.getElementById('error-msg');
-            const downloadBtn = document.getElementById('download-btn');
+                    // Attempting to provide an origin to satisfy YouTube's strict embed policies 
+                    // for official music videos, which often trigger Error 150/153.
+                    const safeOrigin = window.location.origin !== 'null' ? window.location.origin : 'https://example.com';
 
-            // Reset UI
-            loader.classList.remove('hidden');
-            resultImg.classList.add('hidden');
-            downloadBtn.classList.add('hidden');
-            errorMsg.classList.add('hidden');
+                    playerRef.current = new window.YT.Player('youtube-player', {
+                        videoId: videoId,
+                        width: '100%',
+                        height: '100%',
+                        playerVars: { 
+                            'autoplay': 0, 
+                            'controls': 0, 
+                            'disablekb': 1, 
+                            'rel': 0,
+                            'playsinline': 1,
+                            'origin': safeOrigin,
+                            'widget_referrer': window.location.href
+                        },
+                        events: {
+                            'onReady': (e) => {
+                                setIsPlayerReady(true);
+                                setAudioStatus('ready');
+                                setDuration(e.target.getDuration() || 232);
+                            },
+                            'onStateChange': (e) => {
+                                if (bufferingTimeoutRef.current) clearTimeout(bufferingTimeoutRef.current);
 
-            try {
-                const payload = {
-                    instances: { prompt: promptText },
-                    parameters: { sampleCount: 1, aspectRatio: "16:9" }
+                                if (e.data === window.YT.PlayerState.PLAYING) {
+                                    setIsPlaying(true);
+                                    setAudioStatus('ready');
+                                } else if (e.data === window.YT.PlayerState.PAUSED || e.data === window.YT.PlayerState.ENDED) {
+                                    setIsPlaying(false);
+                                } else if (e.data === window.YT.PlayerState.BUFFERING) {
+                                    setAudioStatus('loading');
+                                    bufferingTimeoutRef.current = setTimeout(() => {
+                                        if (playerRef.current && playerRef.current.getPlayerState && playerRef.current.getPlayerState() === window.YT.PlayerState.BUFFERING) {
+                                            console.warn("Sandbox blocked YouTube playback. Switching to fallback.");
+                                            setUseMp3Fallback(true);
+                                            setAudioStatus('ready');
+                                            setIsPlaying(false);
+                                        }
+                                    }, 2000);
+                                }
+                            },
+                            'onError': (e) => {
+                                // Error 150/153 means embedding is restricted by the video owner.
+                                // We use console.warn instead of console.error to prevent the execution 
+                                // environment from flagging this as a hard app crash, and smoothly swap to the fallback.
+                                console.warn(`Youtubeback restricted (Error Code: ${e.data}). Transitioning to fallback mode.`);
+                                setUseMp3Fallback(true);
+                                setAudioStatus('ready'); 
+                                setIsPlaying(false);
+                                
+                                // Clean up the broken player
+                                if (playerRef.current && typeof playerRef.current.destroy === 'function') {
+                                    playerRef.current.destroy();
+                                }
+                            }
+                        }
+                    });
                 };
 
-                const result = await fetchWithRetry(
-                    `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${apiKey}`,
-                    {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    }
-                );
-                
-                if (result && result.predictions && result.predictions[0]) {
-                    const imageUrl = `data:image/png;base64,${result.predictions[0].bytesBase64Encoded}`;
+                if (!window.YT) {
+                    const tag = document.createElement('script');
+                    tag.src = "https://www.youtube.com/iframe_api";
+                    const firstScriptTag = document.getElementsByTagName('script')[0];
+                    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
                     
-                    // Display image
-                    resultImg.src = imageUrl;
-                    resultImg.classList.remove('hidden');
-                    loader.classList.add('hidden');
-                    
-                    // Setup download button
-                    downloadBtn.classList.remove('hidden');
-                    downloadBtn.onclick = () => {
-                        const a = document.createElement('a');
-                        a.href = imageUrl;
-                        a.download = '20.jpg';
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                    };
-                } else {
-                    throw new Error("No image data returned from the generation service.");
+                    window.onYouTubeIframeAPIReady = initializePlayer;
+                } else if (window.YT && window.YT.Player) {
+                    initializePlayer();
                 }
-            } catch (error) {
-                loader.classList.add('hidden');
-                errorMsg.textContent = "SYS.ERR: " + error.message;
-                errorMsg.classList.remove('hidden');
-            }
-        }
+                
+                return () => {
+                    if (bufferingTimeoutRef.current) clearTimeout(bufferingTimeoutRef.current);
+                    if (playerRef.current && typeof playerRef.current.destroy === 'function') {
+                        playerRef.current.destroy();
+                    }
+                };
+            }, [videoId]);
 
-        window.onload = generateImage;
+            // --- SMOOTH POLLING FOR SYNC ---
+            const updateTime = useCallback(() => {
+                const now = performance.now();
+                const deltaTime = (now - lastTimeRef.current) / 1000;
+                lastTimeRef.current = now;
+
+                let time = currentTime;
+                let isCurrentlyPlaying = false;
+
+                if (isSilentMode && isPlaying) {
+                    time = time + deltaTime; 
+                    isCurrentlyPlaying = true;
+                } else if (useMp3Fallback && audioRef.current) {
+                    time = audioRef.current.currentTime;
+                    isCurrentlyPlaying = !audioRef.current.paused;
+                } else if (playerRef.current && playerRef.current.getCurrentTime && isPlaying) {
+                    time = playerRef.current.getCurrentTime();
+                    isCurrentlyPlaying = true;
+                }
+
+                if (isCurrentlyPlaying) {
+                    setCurrentTime(time);
+                    if (autoFlip) {
+                        let activeIndex = 0;
+                        for (let i = 0; i < pages.length; i++) {
+                            if (time >= pages[i].timestamp) activeIndex = i;
+                            else break;
+                        }
+                        if (activeIndex !== currentPage) setCurrentPage(activeIndex);
+                    }
+                }
+                
+                requestRef.current = requestAnimationFrame(updateTime);
+            }, [isPlaying, autoFlip, currentPage, useMp3Fallback, isSilentMode, currentTime]);
+
+            useEffect(() => {
+                requestRef.current = requestAnimationFrame(updateTime);
+                return () => cancelAnimationFrame(requestRef.current);
+            }, [updateTime]);
+
+            // --- CONTROLS ---
+            const togglePlay = () => {
+                if (useMp3Fallback) {
+                    if (audioRef.current && !audioRef.current.error && audioRef.current.readyState > 0) {
+                        if (isPlaying) {
+                            audioRef.current.pause();
+                            setIsPlaying(false);
+                        } else {
+                            audioRef.current.play().then(() => setIsPlaying(true)).catch(() => {
+                                setIsSilentMode(true);
+                                setIsPlaying(true);
+                            });
+                        }
+                    } else {
+                        // If no MP3 exists at the github URL, fallback to silent timed mode
+                        setIsSilentMode(true);
+                        setIsPlaying(!isPlaying);
+                    }
+                    return;
+                }
+
+                if (!isPlayerReady || !playerRef.current || typeof playerRef.current.playVideo !== 'function') return;
+                
+                if (isPlaying) {
+                    playerRef.current.pauseVideo();
+                    setIsPlaying(false);
+                } else {
+                    playerRef.current.playVideo();
+                }
+            };
+
+            const currentData = pages[currentPage];
+
+            return (
+                <div className="flex flex-col h-[100dvh] bg-black text-white font-tech overflow-hidden relative z-10 selection:bg-yellow-400 selection:text-black">
+                    
+                    {/* Audio Fallback for Sandbox Errors */}
+                    {useMp3Fallback && (
+                        <audio 
+                            ref={audioRef}
+                            src={fallbackAudioUrl}
+                            onEnded={() => setIsPlaying(false)}
+                            onLoadedMetadata={(e) => setDuration(e.target.duration)}
+                            onError={(e) => setAudioStatus('error')}
+                            className="hidden"
+                        />
+                    )}
+
+                    {/* HEADER */}
+                    <header className="h-14 sm:h-16 shrink-0 bg-zinc-900 border-b border-yellow-400/30 flex items-center justify-between px-4 z-40 relative">
+                        <div className="flex items-center space-x-2 text-yellow-400 shrink-0">
+                            <Terminal size={20} />
+                            <span className="font-tech text-xl tracking-widest leading-none font-bold uppercase hidden sm:block">Cold_Reactor</span>
+                        </div>
+                        
+                        <div className="flex items-center gap-4 bg-black px-4 py-2 rounded border border-yellow-400/50 shadow-[0_0_10px_rgba(234,255,0,0.1)]">
+                            <div className="hidden md:flex items-center border-r border-yellow-400/30 pr-3 mr-1">
+                                {isSilentMode ? (
+                                    <span className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse mr-2 shadow-[0_0_8px_rgba(250,204,21,0.8)]"></span>
+                                ) : audioStatus === 'loading' ? (
+                                    <Loader2 size={14} className="animate-spin text-blue-400 mr-2" />
+                                ) : audioStatus === 'error' ? (
+                                    <AlertCircle size={14} className="text-red-500 mr-2" />
+                                ) : (
+                                    <span className={`w-2 h-2 rounded-full ${useMp3Fallback ? 'bg-orange-500' : 'bg-green-500'} animate-pulse mr-2 shadow-[0_0_8px_rgba(34,197,94,0.8)]`}></span>
+                                )}
+                                <span className="text-[10px] font-bold text-gray-300 tracking-widest uppercase font-mono-glitch">
+                                    {isSilentMode ? 'SYS.MUTE' : audioStatus === 'loading' ? 'BUFFER' : useMp3Fallback ? 'FALLBACK' : 'YT.SYNC'}
+                                </span>
+                            </div>
+                            
+                            <button onClick={() => setAutoFlip(!autoFlip)} className={`p-1 transition-colors ${autoFlip ? 'text-yellow-400' : 'text-gray-600'}`} title="Auto-Flip Toggle">
+                                <Zap size={18}/>
+                            </button>
+                            
+                            <button onClick={togglePlay} className={`text-white transition-colors hover:text-yellow-400`}>
+                                {isPlaying ? <Pause size={22} /> : <Play size={22} />}
+                            </button>
+                        </div>
+
+                        <div className="text-xs sm:text-sm font-mono-glitch text-yellow-400/50 w-16 text-right">0x{currentPage + 1}/{totalPages}</div>
+                    </header>
+
+                    {/* MAIN CONTENT */}
+                    <main className="flex-1 min-h-0 relative flex items-center justify-center p-2 sm:p-4 w-full bg-[#0a0a0a]">
+                        <button onClick={() => currentPage > 0 && setCurrentPage(currentPage - 1)} className="absolute left-2 sm:left-4 z-40 p-2 bg-yellow-400/10 border border-yellow-400/30 text-yellow-400/50 hover:text-yellow-400 hover:bg-yellow-400/20 rounded transition-colors"><ChevronLeft size={28}/></button>
+                        <button onClick={() => currentPage < totalPages - 1 && setCurrentPage(currentPage + 1)} className="absolute right-2 sm:right-4 z-40 p-2 bg-yellow-400/10 border border-yellow-400/30 text-yellow-400/50 hover:text-yellow-400 hover:bg-yellow-400/20 rounded transition-colors"><ChevronRight size={28}/></button>
+
+                        <div className="w-full max-w-5xl h-full flex flex-col items-center justify-center">
+                            
+                            {/* Static Wrapper that prevents the YouTube iframe from unmounting */}
+                            <div className="comic-panel relative w-full h-full bg-black flex flex-col overflow-hidden rounded">
+                                
+                                {/* TOP: Animated Comic Image Area */}
+                                <div className="flex-1 relative overflow-hidden bg-black flex items-center justify-center w-full min-h-0">
+                                    
+                                    {/* Keyed element handles the fade transition for images ONLY */}
+                                    <div key={currentPage} className="absolute inset-0 animate-in fade-in duration-500 flex flex-col items-center justify-center p-2 sm:p-4">
+                                        <div className={`absolute inset-0 ${currentData.bgColor || 'bg-black'}`}></div>
+                                        
+                                        <div className="absolute text-center opacity-50 z-0 border border-dashed border-yellow-400/50 p-8 rounded bg-black/50 backdrop-blur-sm">
+                                            <Terminal size={32} className="mx-auto text-yellow-400 mb-2 opacity-75" />
+                                            <div className="text-xl font-bold font-mono-glitch text-yellow-400 glitch-text">SYS.IMG_MISSING</div>
+                                            <div className="text-sm font-mono-glitch text-white/60 mt-1">Upload to GitHub repo as: <span className="text-yellow-400">{currentPage + 1}.jpg</span></div>
+                                        </div>
+
+                                        {currentData.image && <img src={currentData.image} className="w-full h-full object-contain relative z-10" alt={`Panel ${currentPage + 1}`} />}
+                                        
+                                        <div className="absolute inset-0 pointer-events-none z-20 opacity-10 mix-blend-overlay" style={{ backgroundImage: 'linear-gradient(transparent 50%, rgba(0,0,0,0.8) 50%)', backgroundSize: '100% 4px' }}></div>
+                                        
+                                        {currentData.type === 'intro' && (
+                                            <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center p-4 text-center pointer-events-none z-30 backdrop-blur-sm">
+                                                <h1 className="text-5xl sm:text-7xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-600 font-tech tracking-tighter mb-2 glitch-text animate-pulse">COLD REACTOR</h1>
+                                                <h2 className="text-xl sm:text-3xl font-bold text-white font-mono-glitch tracking-widest mt-2 border-y border-white/20 py-2">EVERYTHING EVERYTHING</h2>
+                                                <div className="mt-8 font-mono-glitch text-yellow-400/70 text-sm">PRESS PLAY TO INITIALIZE</div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                                
+                                {/* BOTTOM: YouTube Lyric Video Area */}
+                                <div className="shrink-0 bg-zinc-950 border-t-2 border-yellow-400 p-2 sm:p-4 flex items-center justify-center relative h-[35%] min-h-[150px] max-h-[300px] w-full z-30">
+                                    <div className={`w-full h-full max-w-3xl rounded border border-yellow-400/30 overflow-hidden relative shadow-[0_0_15px_rgba(234,255,0,0.2)] pointer-events-none bg-black ${useMp3Fallback ? 'hidden' : 'block'}`}>
+                                        {/* The YouTube iframe mounts here permanently */}
+                                        <div id="youtube-player" className="w-full h-full"></div>
+                                    </div>
+                                    {useMp3Fallback && (
+                                        /* Fallback text lyrics if the YouTube iframe fails to load in preview */
+                                        <div className="w-full h-full flex flex-col justify-center text-center overflow-hidden">
+                                            <div key={`lyrics-${currentPage}`} className="animate-in slide-in-from-bottom-4 duration-500 font-tech text-yellow-400 text-sm sm:text-base md:text-lg font-bold leading-relaxed py-1 tracking-wide">
+                                                {currentData.type !== 'intro' ? currentData.lyrics.split('\n').map((line, i) => <p key={i} className="mb-1">{line}</p>) : 'SYS.AWAITING_INPUT...'}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                                
+                                <div className="absolute bottom-2 left-6 font-mono-glitch text-lg sm:text-xl text-yellow-400/30 pointer-events-none z-40">SYS.SINAN</div>
+                            </div>
+                        </div>
+                    </main>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<ComicReader />);
     </script>
 </body>
 </html>
